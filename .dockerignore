@@ -1,0 +1,11 @@
+.dockerignore
+Dockerfile
+docker-compose.yaml
+.git/
+.gitignore
+#.env*
+.win_venv/
+docs/
+*.md
+TODO
+*.html

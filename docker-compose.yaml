@@ -1,0 +1,80 @@
+version: '3.8'
+
+# Run all the app dependencies in a single docker-compose file for the development environment. This includes Qdrant, Redis, MongoDB, and the Node.js API.
+
+services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: mrayti_qdrant
+    ports:
+      - "6333:6333" # REST API
+      - "6334:6334" # gRPC API
+    volumes:
+      - qdrant_data:/qdrant/storage
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/readyz"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: mrayti_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+################################################## Node Api ####################################
+  smart-mirror-mongo:
+    image: mongo:7.0
+    container_name: mongo
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - smart-mirror-net
+
+  smart-mirror-api:
+    image: mohamedfouad71/smart-mirror-api:latest
+    container_name: node-service
+    restart: always
+    ports:
+      - "3000:3000"
+    # Ports mapping removed from host! Fully isolated inside the network.
+    env_file:
+      - .env
+    depends_on:
+      - smart-mirror-mongo
+    networks:
+      - smart-mirror-net
+
+# logging
+  dozzle:
+    container_name: dozzle
+    image: amir20/dozzle:latest
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - "8080:8080"
+    networks:
+      - smart-mirror-net
+        
+volumes:
+  qdrant_data:
+    name: mrayti_qdrant_data
+  redis_data:
+    name: mrayti_redis_data
+  mongo-data:
+    name: mrayti_mongo_data
+
+networks:
+  smart-mirror-net:

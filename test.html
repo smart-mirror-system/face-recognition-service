@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mrayti AI Service — Test Panel</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f5f5; color: #333; padding: 24px; }
+  .container { max-width: 900px; margin: 0 auto; }
+  h1 { font-size: 1.5rem; margin-bottom: 4px; }
+  .subtitle { color: #666; margin-bottom: 24px; font-size: 0.9rem; }
+  .bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; background: #fff; padding: 12px 16px; border-radius: 8px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+  .bar label { font-weight: 600; font-size: 0.85rem; }
+  .bar input { flex: 1; min-width: 160px; padding: 6px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 0.85rem; font-family: monospace; }
+  .cards { display: flex; flex-direction: column; gap: 16px; }
+  .card { background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,.1); overflow: hidden; }
+  .card-hdr { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; cursor: pointer; user-select: none; }
+  .card-hdr:hover { background: #fafafa; }
+  .card-hdr h3 { font-size: 1rem; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; color: #fff; margin-left: 8px; }
+  .badge.get { background: #2e7d32; }
+  .badge.post { background: #1565c0; }
+  .badge.delete { background: #c62828; }
+  .method { font-weight: 700; font-size: 0.85rem; min-width: 60px; }
+  .method.get { color: #2e7d32; }
+  .method.post { color: #1565c0; }
+  .method.delete { color: #c62828; }
+  .card-body { padding: 0 16px 16px; display: none; }
+  .card-body.open { display: block; }
+  .card-body label { display: block; font-size: 0.8rem; font-weight: 600; margin: 10px 0 4px; }
+  .card-body input, .card-body input[type="file"] { width: 100%; padding: 6px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 0.85rem; font-family: monospace; }
+  .card-body input[type="file"] { padding: 4px; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .row input { flex: 1; min-width: 120px; }
+  button { padding: 8px 20px; border: none; border-radius: 6px; font-size: 0.85rem; font-weight: 600; cursor: pointer; color: #fff; white-space: nowrap; }
+  button:hover { opacity: .85; }
+  .btn-get { background: #2e7d32; }
+  .btn-post { background: #1565c0; }
+  .btn-delete { background: #c62828; }
+  pre { background: #263238; color: #e8e8e8; padding: 12px 16px; border-radius: 6px; font-size: 0.8rem; overflow-x: auto; margin-top: 10px; min-height: 30px; white-space: pre-wrap; }
+  pre.success { border-left: 4px solid #2e7d32; }
+  pre.error { border-left: 4px solid #c62828; }
+  pre.info { border-left: 4px solid #1565c0; }
+  .path { font-family: monospace; font-size: 0.85rem; color: #888; }
+  .empty { color: #999; font-style: italic; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Mrayti AI Service</h1>
+  <div class="subtitle">Endpoint Test Panel</div>
+
+  <div class="bar">
+    <label for="baseUrl">Base URL</label>
+    <input id="baseUrl" value="http://localhost:8000" placeholder="http://localhost:8000">
+    <label for="jwtToken">JWT Token</label>
+    <input id="jwtToken" placeholder="eyJhbGci...">
+  </div>
+
+  <div class="cards">
+
+    <!-- Health -->
+    <div class="card">
+      <div class="card-hdr" onclick="toggle(this)">
+        <span><span class="method get">GET</span> /health</span>
+        <span class="badge get">liveness</span>
+      </div>
+      <div class="card-body">
+        <p class="path">GET /health</p>
+        <div class="row" style="margin-top:8px">
+          <button class="btn-get" onclick="call('GET','/health')">Send</button>
+        </div>
+        <pre id="res-health" class="info">Click "Send" to test</pre>
+      </div>
+    </div>
+
+    <!-- Ready -->
+    <div class="card">
+      <div class="card-hdr" onclick="toggle(this)">
+        <span><span class="method get">GET</span> /ready</span>
+        <span class="badge get">readiness</span>
+      </div>
+      <div class="card-body">
+        <p class="path">GET /ready</p>
+        <div class="row" style="margin-top:8px">
+          <button class="btn-get" onclick="call('GET','/ready')">Send</button>
+        </div>
+        <pre id="res-ready" class="info">Click "Send" to test</pre>
+      </div>
+    </div>
+
+    <!-- Register -->
+    <div class="card">
+      <div class="card-hdr" onclick="toggle(this)">
+        <span><span class="method post">POST</span> /register</span>
+        <span class="badge post">auth required</span>
+      </div>
+      <div class="card-body">
+        <p class="path">POST /register</p>
+        <label>Image file (JPEG/PNG)</label>
+        <input type="file" id="register-file" accept="image/jpeg,image/png">
+        <div class="row" style="margin-top:10px">
+          <button class="btn-post" onclick="register()">Send</button>
+        </div>
+        <pre id="res-register" class="info">Select an image and click "Send"</pre>
+      </div>
+    </div>
+
+    <!-- Login -->
+    <div class="card">
+      <div class="card-hdr" onclick="toggle(this)">
+        <span><span class="method post">POST</span> /login</span>
+        <span class="badge post">public</span>
+      </div>
+      <div class="card-body">
+        <p class="path">POST /login</p>
+        <label>Image file (JPEG/PNG)</label>
+        <input type="file" id="login-file" accept="image/jpeg,image/png">
+        <div class="row" style="margin-top:10px">
+          <button class="btn-post" onclick="login()">Send</button>
+        </div>
+        <pre id="res-login" class="info">Select an image and click "Send"</pre>
+      </div>
+    </div>
+
+    <!-- Delete single point -->
+    <div class="card">
+      <div class="card-hdr" onclick="toggle(this)">
+        <span><span class="method delete">DELETE</span> /faces/{point_id}</span>
+        <span class="badge delete">auth required</span>
+      </div>
+      <div class="card-body">
+        <p class="path">DELETE /faces/{point_id}</p>
+        <label>Point ID</label>
+        <input id="delete-point-id" placeholder="UUID of the face point to delete">
+        <div class="row" style="margin-top:10px">
+          <button class="btn-delete" onclick="deletePoint()">Send</button>
+        </div>
+        <pre id="res-delete-point" class="info">Enter a point ID and click "Send"</pre>
+      </div>
+    </div>
+
+    <!-- Delete all user faces -->
+    <div class="card">
+      <div class="card-hdr" onclick="toggle(this)">
+        <span><span class="method delete">DELETE</span> /faces/user/{user_id}</span>
+        <span class="badge delete">auth required</span>
+      </div>
+      <div class="card-body">
+        <p class="path">DELETE /faces/user/{user_id}</p>
+        <label>User ID</label>
+        <input id="delete-user-id" placeholder="User ID to delete all faces for">
+        <div class="row" style="margin-top:10px">
+          <button class="btn-delete" onclick="deleteUser()">Send</button>
+        </div>
+        <pre id="res-delete-user" class="info">Enter a user ID and click "Send"</pre>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+function toggle(hdr) {
+  hdr.nextElementSibling.classList.toggle('open');
+}
+
+function url(path) {
+  return document.getElementById('baseUrl').value.replace(/\/+$/, '') + path;
+}
+
+function token() {
+  return document.getElementById('jwtToken').value;
+}
+
+function headers(extra) {
+  const h = extra || {};
+  const t = token();
+  if (t) h['Authorization'] = 'Bearer ' + t;
+  return h;
+}
+
+async function api(method, path, opts) {
+  const res = await fetch(url(path), { method, ...opts, headers: headers(opts?.headers) });
+  const text = await res.text();
+  let pretty = text;
+  try { pretty = JSON.stringify(JSON.parse(text), null, 2); } catch {}
+  return { ok: res.ok, status: res.status, body: pretty };
+}
+
+function show(elId, result) {
+  const el = document.getElementById(elId);
+  el.className = result.ok ? 'success' : 'error';
+  el.textContent = result.status + ' ' + (result.ok ? 'OK' : '') + '\n' + result.body;
+}
+
+async function call(method, path) {
+  const key = 'res-' + path.replace(/[^a-z]/g, '').replace(/^res-/,'') || path.replace(/^\/?(.+)/, '$1');
+  const elId = 'res-' + path.replace(/^\//, '').replace(/\//g, '-');
+  const result = await api(method, path);
+  show(elId, result);
+}
+
+async function register() {
+  const file = document.getElementById('register-file').files[0];
+  if (!file) return show('res-register', { ok: false, status: 0, body: 'Please select an image file.' });
+  const fd = new FormData();
+  fd.append('file', file);
+  const res = await fetch(url('/register'), { method: 'POST', headers: headers(), body: fd });
+  const text = await res.text();
+  let pretty = text;
+  try { pretty = JSON.stringify(JSON.parse(text), null, 2); } catch {}
+  show('res-register', { ok: res.ok, status: res.status, body: pretty });
+}
+
+async function login() {
+  const file = document.getElementById('login-file').files[0];
+  if (!file) return show('res-login', { ok: false, status: 0, body: 'Please select an image file.' });
+  const fd = new FormData();
+  fd.append('file', file);
+  const res = await fetch(url('/login'), { method: 'POST', body: fd });
+  const text = await res.text();
+  let data;
+  try { data = JSON.parse(text); } catch {}
+  if (data && data.token) {
+    document.getElementById('jwtToken').value = data.token;
+  }
+  const pretty = data ? JSON.stringify(data, null, 2) : text;
+  show('res-login', { ok: res.ok, status: res.status, body: pretty });
+}
+
+async function deletePoint() {
+  const pointId = document.getElementById('delete-point-id').value.trim();
+  if (!pointId) return show('res-delete-point', { ok: false, status: 0, body: 'Please enter a point ID.' });
+  const res = await fetch(url('/faces/' + encodeURIComponent(pointId)), { method: 'DELETE', headers: headers() });
+  const text = await res.text();
+  let pretty = text;
+  try { pretty = JSON.stringify(JSON.parse(text), null, 2); } catch {}
+  show('res-delete-point', { ok: res.ok, status: res.status, body: pretty });
+}
+
+async function deleteUser() {
+  const uid = document.getElementById('delete-user-id').value.trim();
+  if (!uid) return show('res-delete-user', { ok: false, status: 0, body: 'Please enter a user ID.' });
+  const res = await fetch(url('/faces/user/' + encodeURIComponent(uid)), { method: 'DELETE', headers: headers() });
+  const text = await res.text();
+  let pretty = text;
+  try { pretty = JSON.stringify(JSON.parse(text), null, 2); } catch {}
+  show('res-delete-user', { ok: res.ok, status: res.status, body: pretty });
+}
+</script>
+</body>
+</html>
