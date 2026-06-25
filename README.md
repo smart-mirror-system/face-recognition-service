@@ -12,6 +12,7 @@
   - [POST /login](#post-login--face-login-biometric-auth)
   - [DELETE /faces/{point_id}](#delete-facespoint_id--delete-face-point)
   - [DELETE /faces/user/{user_id}](#delete-facesuseruser_id--delete-all-user-faces)
+  - [GET /faces/count](#get-facescount--check-face-registration-status)
   - [GET /health](#get-health--liveness-probe)
   - [GET /ready](#get-ready--readiness-probe)
 - [Data Flow](#data-flow)
@@ -117,7 +118,8 @@ app/
 │   ├── __init__.py
 │   ├── registration.py  # Face registration business logic
 │   ├── recognition.py   # Face recognition business logic
-│   └── deletion.py      # Face deletion business logic
+│   ├── deletion.py      # Face deletion business logic
+│   └── lookup.py        # Face lookup / user existence checks
 └── workers/
     ├── __init__.py
     └── deletion_worker.py  # Placeholder for Redis stream consumer
@@ -221,6 +223,24 @@ Removes all registered face vectors belonging to the authenticated user.
 ```
 
 **Errors:** `401` (JWT), `403` (cannot delete another user's data), `404` (no face vectors found), `500` (internal).
+
+### `GET /faces/count` — Check Face Registration Status
+
+Returns the number of face vectors registered for the authenticated user. Used by the frontend to determine whether to show a fresh registration or a re-registration flow.
+
+- **Rate limit:** `30 per minute`
+- **Auth:** JWT `Bearer` token required (`userId` claim)
+
+**Success (200):**
+```json
+{
+  "user_id": "6a3b1a6a75b4fd165ed0da44",
+  "count": 3,
+  "exists": true
+}
+```
+
+**Errors:** `401` (JWT), `500` (internal).
 
 ### `GET /health` — Liveness Probe
 
@@ -338,6 +358,10 @@ Mirror/User            Gateway               AI Service                Qdrant
 - `delete_point(point_id)` — deletes a single point by ID
 - `delete_user_faces(user_id)` — scrolls all points matching a user via payload filter, deletes them in batch, returns count
 
+### `LookupService` (`app/services/lookup.py`)
+- `count_user_faces(user_id)` — uses Qdrant's efficient `count()` API with a payload filter to return the number of registered face vectors for a user, without loading any vectors
+- `user_has_faces(user_id)` — convenience wrapper returning `bool`
+
 ### JWT Auth (`app/core/auth.py`)
 - `get_current_user_id` — FastAPI dependency that extracts and verifies the JWT from the `Authorization` header
 - `create_token(user_id)` — signs a new JWT with the shared `JWT_SECRET` and `JWT_EXPIRES` (default `7d`)
@@ -386,12 +410,13 @@ The AI service, Qdrant, and Redis communicate via host-mapped ports. The Node.js
 ### Gateway Configuration
 
 Endpoints are designed to be mounted behind a path-stripping gateway:
-- `POST /api/v1/ai/register` → internal `POST /register`
-- `POST /api/v1/ai/login` → internal `POST /login`
-- `DELETE /api/v1/ai/faces/{point_id}` → internal `DELETE /faces/{point_id}`
-- `DELETE /api/v1/ai/faces/user/{user_id}` → internal `DELETE /faces/user/{user_id}`
-- `GET /api/v1/ai/health` → internal `GET /health`
-- `GET /api/v1/ai/ready` → internal `GET /ready`
+- `POST /ai/register` → internal `POST /register`
+- `POST /ai/login` → internal `POST /login`
+- `DELETE /ai/faces/{point_id}` → internal `DELETE /faces/{point_id}`
+- `DELETE /ai/faces/user/{user_id}` → internal `DELETE /faces/user/{user_id}`
+- `GET /ai/faces/count` → internal `GET /faces/count`
+- `GET /ai/health` → internal `GET /health`
+- `GET /ai/ready` → internal `GET /ready`
 
 Set `BEHIND_GATEWAY=True` for correct rate limiting via `X-Forwarded-For`.
 
@@ -430,3 +455,4 @@ Key settings for the AI service:
 
 1. **`workers/deletion_worker.py`** — empty. Should consume Redis stream `mrayti_events` to handle "user deleted" events and remove all face vectors for a deleted user from Qdrant.
 2. **No batch registration** — each face pose requires a separate HTTP call.
+3. **Face count endpoint** — `GET /faces/count` uses Qdrant's `count()` API which is already efficient, but caching could be added for high-traffic scenarios.

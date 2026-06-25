@@ -14,6 +14,7 @@ from app.core.embedder import FaceDetectionError
 from app.services.registration import registration_service
 from app.services.recognition import recognition_service
 from app.services.deletion import deletion_service
+from app.services.lookup import lookup_service
 
 
 logging.basicConfig(
@@ -230,6 +231,30 @@ async def delete_user_faces(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to delete face vectors."
+        )
+
+
+# --- FACE LOOKUP ---
+
+@app.get("/faces/count", status_code=status.HTTP_200_OK)
+@limiter.limit(settings.DELETE_POINT_RATE_LIMIT)
+async def get_my_face_count(
+    request: Request,
+    user_id: str = Depends(get_current_user_id)
+):
+    try:
+        count = lookup_service.count_user_faces(user_id)
+        logger.info("Face count check for user=%s: %d", user_id, count)
+        return {
+            "user_id": user_id,
+            "count": count,
+            "exists": count > 0
+        }
+    except Exception as e:
+        logger.error("Failed to count faces for user=%s: %s", user_id, e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to check face registration status."
         )
 
 

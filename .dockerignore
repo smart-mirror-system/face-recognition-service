@@ -3,7 +3,7 @@ Dockerfile
 docker-compose.yaml
 .git/
 .gitignore
-#.env*
+.env*
 .win_venv/
 docs/
 *.md
